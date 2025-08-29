@@ -6,12 +6,7 @@
   <title>Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      font-family: 'Rubik', sans-serif;
-      background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed;
-      background-size: cover;
-      color:#fff;
-    }
+    body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -82,122 +77,154 @@
   </audio>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, getDocs, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
-  authDomain: "shiinamahiru.firebaseapp.com",
-  projectId: "shiinamahiru",
-  storageBucket: "shiinamahiru.firebasestorage.app",
-  messagingSenderId: "639368679466",
-  appId: "1:639368679466:web:c2886952ea91599ec9b353"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+    authDomain: "shiinamahiru.firebaseapp.com",
+    projectId: "shiinamahiru",
+    storageBucket: "shiinamahiru.firebasestorage.app",
+    messagingSenderId: "639368679466",
+    appId: "1:639368679466:web:c2886952ea91599ec9b353"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-// music
-const music = document.getElementById("bgMusic");
-const musicBtn = document.getElementById("toggleMusic");
-let playing = true;
-window.addEventListener("load", ()=>{ music.play().catch(()=>{ musicBtn.textContent="▶ Bật nhạc"; playing=false; }); });
-musicBtn.addEventListener("click", ()=>{ if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } playing=!playing; });
+  // music
+  const music = document.getElementById("bgMusic");
+  const musicBtn = document.getElementById("toggleMusic");
+  let playing = true;
+  window.addEventListener("load", ()=>{ music.play().catch(()=>{ musicBtn.textContent="▶ Bật nhạc"; playing=false; }); });
+  musicBtn.addEventListener("click", ()=>{ if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } playing=!playing; });
 
-// ADMIN GUARD
-onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    alert("Vui lòng đăng nhập admin");
-    window.location.href = "login.html";
-    return;
-  }
-  try {
-    const userDocRef = doc(db, "users", user.uid);
-    const userSnap = await getDocs(query(collection(db,"users"),where("__name__","==",user.uid)));
-    let isAdmin = false;
-    if(!userSnap.empty && userSnap.docs[0].data().role === "admin") isAdmin = true;
-    if(!isAdmin){
-      alert("Bạn không có quyền truy cập trang này!");
-      window.location.href = "index.html";
-      return;
-    }
-    // load data
-    loadProducts();
-    loadUsers();
-  } catch(err){
-    console.error(err);
-    alert("Lỗi kiểm tra quyền: " + err.message);
-    window.location.href = "index.html";
-  }
-});
-
-// ADD PRODUCT
-document.getElementById("btnAddProduct").addEventListener("click", async () => {
-  const name = document.getElementById("productName").value.trim();
-  const desc = document.getElementById("productDesc").value.trim();
-  const price = Number(document.getElementById("productPrice").value) || 0;
-  const discount = Number(document.getElementById("productDiscount").value) || 0;
-  const image = document.getElementById("productImage").value.trim();
-  const quantity = parseInt(document.getElementById("productQuantity").value) || 0;
-  if (!name || !quantity) return alert("Vui lòng điền đủ trường (tối thiểu tên + quantity).");
-
-  try {
-    const pRef = await addDoc(collection(db, "products"), {
-      name, desc, price, discount, image, quantity, createdAt: new Date().toISOString()
-    });
-    for(let i=0;i<quantity;i++){
-      const key = `KEY-${Math.random().toString(36).slice(2,9)}-${Date.now().toString().slice(-4)}-${i}`;
-      await addDoc(collection(db,"products",pRef.id,"keys"),{ value:key, used:false, createdAt: new Date().toISOString() });
-    }
-    alert("✅ Đã thêm sản phẩm và tạo keys.");
-    document.getElementById("productName").value="";
-    document.getElementById("productDesc").value="";
-    document.getElementById("productPrice").value="";
-    document.getElementById("productDiscount").value="";
-    document.getElementById("productImage").value="";
-    document.getElementById("productQuantity").value="";
-    loadProducts();
-  }catch(err){ console.error(err); alert("Lỗi thêm sản phẩm: "+err.message); }
-});
-
-// LOAD PRODUCTS
-async function loadProducts(){
-  const snap = await getDocs(collection(db,"products"));
-  const list = document.getElementById("productList");
-  list.innerHTML="";
-  snap.forEach(docSnap=>{
-    const p=docSnap.data(), id=docSnap.id;
-    list.innerHTML += `<div class="bg-zinc-800 p-4 rounded mb-3 flex justify-between items-center">
-      <div><div class="font-semibold">${p.name}</div>
-      <div class="text-sm text-gray-400">Giá: ${p.price} | KM: ${p.discount||0} | SL: ${p.quantity}</div></div>
-      <div><button onclick="deleteProduct('${id}')" class="text-red-500 hover:underline text-sm mr-4">Xóa</button></div>
-    </div>`;
+  // check admin
+  onAuthStateChanged(auth, async (user)=>{
+    if(!user){ alert("Vui lòng đăng nhập admin"); window.location.href="login.html"; return; }
+    try{
+      const userSnap = await getDoc(doc(db,"users",user.uid));
+      if(!userSnap.exists() || userSnap.data().role !== "admin"){
+        alert("Bạn không có quyền truy cập trang này!");
+        window.location.href="index.html";
+        return;
+      }
+      // load data
+      loadProducts();
+      loadUsers();
+    }catch(err){ console.error(err); alert("Lỗi kiểm tra quyền: "+err.message); window.location.href="index.html"; }
   });
-}
 
-window.deleteProduct = async function(productId){
-  if(!confirm("Bạn chắc chắn muốn xóa sản phẩm này?")) return;
-  try{ await deleteDoc(doc(db,"products",productId)); alert("Đã xóa."); loadProducts(); }
-  catch(err){ console.error(err); alert("Lỗi xóa: "+err.message); }
-}
+  // add product
+  document.getElementById("btnAddProduct").addEventListener("click", async ()=>{
+    const name = document.getElementById("productName").value.trim();
+    const desc = document.getElementById("productDesc").value.trim();
+    const price = Number(document.getElementById("productPrice").value)||0;
+    const discount = Number(document.getElementById("productDiscount").value)||0;
+    const image = document.getElementById("productImage").value.trim();
+    const quantity = parseInt(document.getElementById("productQuantity").value)||0;
+    if(!name||!quantity) return alert("Vui lòng điền đủ trường (tối thiểu tên + quantity).");
+    try{
+      const pRef = await addDoc(collection(db,"products"),{name,desc,price,discount,image,quantity,createdAt:new Date().toISOString()});
+      for(let i=0;i<quantity;i++){
+        const key = `KEY-${Math.random().toString(36).slice(2,9)}-${Date.now().toString().slice(-4)}-${i}`;
+        await addDoc(collection(db,"products",pRef.id,"keys"),{value:key,used:false,createdAt:new Date().toISOString()});
+      }
+      alert("✅ Đã thêm sản phẩm và tạo keys.");
+      document.getElementById("productName").value="";
+      document.getElementById("productDesc").value="";
+      document.getElementById("productPrice").value="";
+      document.getElementById("productDiscount").value="";
+      document.getElementById("productImage").value="";
+      document.getElementById("productQuantity").value="";
+      loadProducts();
+    }catch(err){ console.error(err); alert("Lỗi thêm sản phẩm: "+err.message); }
+  });
 
-// ADD BALANCE
-document.getElementById("btnAddBalance").addEventListener("click", async ()=>{
-  const username = document.getElementById("targetUser").value.trim();
-  const amount = Number(document.getElementById("amount").value) || 0;
-  if(!username || amount<=0) return alert("Nhập username và amount hợp lệ.");
-  try{
-    const snap = await getDocs(query(collection(db,"users"),where("username","==",username)));
-    if(snap.empty) return alert("User không tồn tại.");
-    const uDoc = snap.docs[0], uid = uDoc.id, cur = uDoc.data().balance||0;
-    await updateDoc(doc(db,"users",uid),{balance: cur+amount});
-    alert("✅ Đã cộng tiền.");
-    loadUsers();
-  }catch(err){ console.error(err); alert("Lỗi cộng tiền: "+err.message); }
-});
+  async function loadProducts(){
+    const snap = await getDocs(collection(db,"products"));
+    const list = document.getElementById("productList");
+    list.innerHTML="";
+    snap.forEach(docSnap=>{
+      const p = docSnap.data();
+      const id = docSnap.id;
+      list.innerHTML+=`
+      <div class="bg-zinc-800 p-4 rounded mb-3 flex justify-between items-center">
+        <div>
+          <div class="font-semibold">${p.name}</div>
+          <div class="text-sm text-gray-400">Giá: ${p.price} | KM: ${p.discount||0} | SL: ${p.quantity}</div>
+        </div>
+        <div>
+          <button onclick="deleteProduct('${id}')" class="text-red-500 hover:underline text-sm mr-4">Xóa</button>
+        </div>
+      </div>`;
+    });
+  }
 
-// LOAD USERS
-async function loadUsers(){
-  const snap = await getDocs(collection(db,"users"));
-  const tb = document.getElement
+  window.deleteProduct = async function(id){
+    if(!confirm("Bạn chắc chắn muốn xóa sản phẩm này?")) return;
+    try{ await deleteDoc(doc(db,"products",id)); alert("Đã xóa."); loadProducts(); }catch(err){ console.error(err); alert("Lỗi xóa: "+err.message); }
+  }
+
+  // add balance
+  document.getElementById("btnAddBalance").addEventListener("click", async ()=>{
+    const username = document.getElementById("targetUser").value.trim();
+    const amount = Number(document.getElementById("amount").value)||0;
+    if(!username||amount<=0) return alert("Nhập username và amount hợp lệ.");
+    try{
+      const q = query(collection(db,"users"),where("username","==",username));
+      const snap = await getDocs(q);
+      if(snap.empty) return alert("User không tồn tại.");
+      const uid = snap.docs[0].id;
+      const cur = snap.docs[0].data().balance||0;
+      await updateDoc(doc(db,"users",uid),{balance:cur+amount});
+      alert("✅ Đã cộng tiền.");
+      loadUsers();
+    }catch(err){ console.error(err); alert("Lỗi cộng tiền: "+err.message); }
+  });
+
+  async function loadUsers(){
+    const snap = await getDocs(collection(db,"users"));
+    const tb = document.getElementById("accountList");
+    tb.innerHTML="";
+    let idx=0;
+    snap.forEach(docSnap=>{
+      const u = docSnap.data();
+      const uid = docSnap.id;
+      const status = u.locked?"🔒 Khoá":"✅ Bình thường";
+      tb.innerHTML+=`
+      <tr class="border-b border-zinc-700">
+        <td class="p-2">${++idx}</td>
+        <td class="p-2">${u.username||'(no-name)'}</td>
+        <td class="p-2">${u.email||'-'}</td>
+        <td class="p-2">${u.balance||0}</td>
+        <td class="p-2">${status}</td>
+        <td class="p-2 space-x-2">
+          <button onclick="toggleLock('${uid}')" class="text-yellow-400 hover:underline text-xs">${u.locked?'Mở khoá':'Khoá'}</button>
+          <button onclick="resetPassword('${u.email}')" class="text-red-400 hover:underline text-xs">Đặt lại MK</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  window.toggleLock = async function(uid){
+    try{
+      const uSnap = await getDoc(doc(db,"users",uid));
+      if(!uSnap.exists()) return alert("User không tồn tại.");
+      const locked = uSnap.data().locked||false;
+      await updateDoc(doc(db,"users",uid),{locked:!locked});
+      alert(`Đã ${!locked?'khoá':'mở khoá'} user.`);
+      loadUsers();
+    }catch(err){ console.error(err); alert("Lỗi toggle lock: "+err.message); }
+  }
+
+  window.resetPassword = async function(email){
+    if(!email) return alert("User chưa có email.");
+    if(!confirm("Gửi email đặt lại mật khẩu tới: "+email+" ?")) return;
+    try{ await sendPasswordResetEmail(auth,email); alert("✅ Email đặt lại mật khẩu đã gửi."); }
+    catch(err){ console.error(err); alert("Lỗi gửi email reset: "+err.message); }
+  }
+</script>
+</body>
+</html>
