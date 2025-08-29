@@ -19,6 +19,24 @@
       background: rgba(61,92,66,0.9); color: white; padding: 10px 15px;
       border-radius: 9999px; font-size: 14px; z-index: 999;
     }
+    .balance-badge {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+    }
+    #adminBtn {
+      cursor: pointer;
+      background: rgba(128,0,128,0.7);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      font-weight: bold;
+      color: #fff;
+    }
+    #adminBtn:hover {
+      background: rgba(128,0,128,0.9);
+    }
   </style>
 </head>
 <body>
@@ -76,13 +94,11 @@
   </audio>
 
   <!-- Firebase -->
-<script type="module">
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-
-    // 🔥 Config Firebase của cậu
     const firebaseConfig = {
       apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
       authDomain: "shiinamahiru.firebaseapp.com",
@@ -99,20 +115,34 @@
     const userStatus = document.getElementById("userStatus");
     const productSection = document.getElementById("productSection");
     let currentUser = null;
+    let currentUserData = null;
 
-    // Hiển thị user
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        userStatus.innerHTML = `👤 ${user.email} | <a href="#" id="logoutLink" class="underline">Logout</a>`;
-        document.getElementById("logoutLink").addEventListener("click", async () => {
-          await signOut(auth);
-          window.location.href = "login.html";
-        });
-        renderProducts();
-      } else {
+    // Hiển thị user, số dư và nút admin nếu admin
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = "login.html"; return; }
+      currentUser = user;
+
+      // Lấy dữ liệu user từ Firestore
+      const userSnap = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
+      if (userSnap.empty) { alert("User không tồn tại"); window.location.href="login.html"; return; }
+
+      currentUserData = userSnap.docs[0].data();
+      const balance = currentUserData.balance || 0;
+      const isAdmin = currentUserData.role === "admin";
+
+      userStatus.innerHTML = `
+        👤 ${user.email} 
+        | <span class="balance-badge">Số dư: ${balance.toLocaleString()}đ</span>
+        ${isAdmin ? '<span id="adminBtn" onclick="window.location.href=\'admin.html\'">Admin Panel</span>' : ''}
+        | <a href="#" id="logoutLink" class="underline">Logout</a>
+      `;
+
+      document.getElementById("logoutLink").addEventListener("click", async () => {
+        await signOut(auth);
         window.location.href = "login.html";
-      }
+      });
+
+      renderProducts();
     });
 
     // Load sản phẩm
@@ -163,38 +193,32 @@
       const discount = document.getElementById("discountCode").value.trim();
       if (discount === "GACHA10") total = Math.round(total * 0.9);
 
-      // ✅ Giả định mỗi user có balance trong Firestore (collection "users")
       const userRef = doc(db, "users", currentUser.uid);
       const productRef = doc(db, "products", productId);
 
-      // Update (đơn giản hóa)
       await updateDoc(productRef, { quantity: available - quantity });
       await addDoc(collection(db, "history"), {
         user: currentUser.email,
         product: productName,
+        price: total,
         quantity,
-        total,
-        time: new Date().toISOString()
+        createdAt: new Date().toISOString()
       });
 
-      alert("✅ Mua thành công!");
+      alert(`✅ Bạn đã mua ${quantity} x ${productName} tổng: ${total.toLocaleString()}đ`);
       document.getElementById("buyModal").classList.add("hidden");
       renderProducts();
     }
-  </script>
 
-  <!-- Music -->
-  <script>
+    // Music toggle
     const music = document.getElementById("bgMusic");
-    const btn = document.getElementById("toggleMusic");
+    const musicBtn = document.getElementById("toggleMusic");
     let playing = true;
-    window.addEventListener("load", () => {
-      music.play().catch(() => { btn.textContent="▶ Bật nhạc"; playing=false; });
-    });
-    btn.addEventListener("click", () => {
-      if (!playing) { music.play(); btn.textContent="⏸ Tắt nhạc"; }
-      else { music.pause(); btn.textContent="▶ Bật nhạc"; }
-      playing = !playing;
+    window.addEventListener("load", () => { music.play().catch(()=>{ musicBtn.textContent="▶ Bật nhạc"; playing=false; }); });
+    musicBtn.addEventListener("click", ()=>{ 
+      if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } 
+      else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } 
+      playing=!playing; 
     });
   </script>
 </body>
