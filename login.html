@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Đăng Nhập</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }</style>
+  <style>
+    body { 
+      font-family: 'Rubik', sans-serif; 
+      background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; 
+      background-size: cover; 
+      color:#fff; 
+    }
+  </style>
 </head>
 <body class="flex items-center justify-center h-screen">
   <div class="bg-[#1c1c1c]/80 backdrop-blur-xl p-8 rounded-xl border border-zinc-700 w-full max-w-md">
@@ -30,7 +36,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
@@ -44,7 +50,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // music controls (same as before)
+    // music controls
     const music = document.getElementById("bgMusic");
     const btn = document.getElementById("toggleMusic");
     let playing = true;
@@ -56,9 +62,7 @@
       const identifier = document.getElementById('identifier').value.trim();
       const password = document.getElementById('password').value;
 
-      // identifier có thể là username hoặc email
       let emailToUse = identifier;
-      // nếu identifier không chứa @ thì có thể là username -> tìm trong users collection
       if (!identifier.includes('@')) {
         const q = query(collection(db, "users"), where("username", "==", identifier));
         const snap = await getDocs(q);
@@ -66,18 +70,26 @@
           alert("Tài khoản không tồn tại. Vui lòng đăng ký.");
           return;
         }
-        // lấy email đầu tiên tìm được
         emailToUse = snap.docs[0].data().email;
-        if (!emailToUse) {
-          alert("Tài khoản chưa có email hợp lệ. Liên hệ admin.");
-          return;
-        }
       }
 
       try {
-        await signInWithEmailAndPassword(auth, emailToUse, password);
-        // đăng nhập thành công -> chuyển tới index
-        window.location.href = "index.html";
+        const userCred = await signInWithEmailAndPassword(auth, emailToUse, password);
+        const user = userCred.user;
+
+        // lấy thông tin role từ Firestore
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.role === "admin") {
+            alert("✅ Xin chào Admin!");
+            window.location.href = "admin.html";
+          } else {
+            window.location.href = "index.html";
+          }
+        } else {
+          alert("❌ Không tìm thấy dữ liệu user.");
+        }
       } catch (err) {
         console.error(err);
         alert("Đăng nhập thất bại: " + err.message);
