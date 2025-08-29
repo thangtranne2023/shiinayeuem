@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>User Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }
+</style>
+</head>
+<body class="min-h-screen p-6">
+
+<header class="bg-[#161616] shadow-md p-4 flex justify-between items-center">
+  <h1 class="text-xl font-bold text-purple-400">USER PANEL</h1>
+  <button id="logoutBtn" class="text-sm text-gray-300 hover:text-white">🚪 Đăng xuất</button>
+</header>
+
+<main class="p-6 space-y-6 max-w-2xl mx-auto">
+
+  <section class="bg-[#1c1c1c] p-6 rounded-xl border border-zinc-700">
+    <h2 class="text-2xl font-semibold mb-4">👤 Thông tin tài khoản</h2>
+    <p class="mb-2">Tên đăng nhập: <span id="username">—</span></p>
+    <p>Số dư hiện tại: <span id="balance">0</span> VNĐ</p>
+  </section>
+
+  <section class="bg-[#1c1c1c] p-6 rounded-xl border border-zinc-700">
+    <h2 class="text-2xl font-semibold mb-4">💳 Nạp / Thanh toán</h2>
+    <p>Chức năng nạp tiền và mua sản phẩm sẽ được tích hợp sau.</p>
+  </section>
+
+</main>
+
+<button id="toggleMusic" class="fixed bottom-5 right-5 bg-purple-600 px-4 py-2 rounded">⏸ Tắt nhạc</button>
+<audio id="bgMusic" autoplay loop>
+  <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+</audio>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+  authDomain: "shiinamahiru.firebaseapp.com",
+  projectId: "shiinamahiru",
+  storageBucket: "shiinamahiru.firebasestorage.app",
+  messagingSenderId: "639368679466",
+  appId: "1:639368679466:web:c2886952ea91599ec9b353"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// music
+const music = document.getElementById("bgMusic");
+const musicBtn = document.getElementById("toggleMusic");
+let playing = true;
+window.addEventListener("load", ()=>{ music.play().catch(()=>{ musicBtn.textContent="▶ Bật nhạc"; playing=false; }); });
+musicBtn.addEventListener("click", ()=>{ if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } playing=!playing; });
+
+// logout
+document.getElementById("logoutBtn").addEventListener("click", ()=>{
+  signOut(auth).then(()=>{ window.location.href="login.html"; }).catch(console.error);
+});
+
+// load user info live
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ window.location.href="login.html"; return; }
+  const userRef = doc(db,"users",user.uid);
+  onSnapshot(userRef,(snap)=>{
+    const data = snap.data();
+    if(!data){ document.getElementById("username").textContent="—"; document.getElementById("balance").textContent="0"; return; }
+    document.getElementById("username").textContent = data.username || "—";
+    document.getElementById("balance").textContent = data.balance || 0;
+  });
+});
+</script>
+
+</body>
+</html>
