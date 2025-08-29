@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng Ký</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase SDK compat (dùng cho code v8 cũ) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Rubik', sans-serif;
+      background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed;
+      background-size: cover; color: #fff;
+    }
+    #toggleMusic {
+      position: fixed; bottom: 20px; right: 20px;
+      background: rgba(61,92,66,0.9); color: white; padding: 10px 15px;
+      border-radius: 9999px; font-size: 14px; z-index: 999;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+  <div class="bg-[#1c1c1c]/80 backdrop-blur-xl p-8 rounded-xl border border-zinc-700 w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center text-purple-400">Tạo Tài Khoản</h1>
+    <form id="registerForm">
+      <input type="text" id="username" placeholder="Tên đăng nhập" class="w-full mb-4 p-2 rounded bg-zinc-800 text-white" required />
+      <input type="email" id="email" placeholder="Email" class="w-full mb-4 p-2 rounded bg-zinc-800 text-white" required />
+      <input type="password" id="password" placeholder="Mật khẩu" class="w-full mb-4 p-2 rounded bg-zinc-800 text-white" required />
+      <button type="submit" class="w-full bg-purple-600 py-2 rounded hover:bg-purple-700">Đăng Ký</button>
+    </form>
+    <p class="mt-4 text-center text-sm text-gray-400">Đã có tài khoản? 
+      <a href="login.html" class="text-purple-400 hover:underline">Đăng nhập</a>
+    </p>
+  </div>
+
+  <button id="toggleMusic">⏸ Tắt nhạc</button>
+  <audio id="bgMusic" autoplay loop>
+    <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+  </audio>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+      authDomain: "shiinamahiru.firebaseapp.com",
+      projectId: "shiinamahiru",
+      storageBucket: "shiinamahiru.firebasestorage.app",
+      messagingSenderId: "639368679466",
+      appId: "1:639368679466:web:c2886952ea91599ec9b353"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- Register Function ---
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      try {
+        // Tạo tài khoản với Firebase Auth
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Lưu thêm thông tin vào Firestore
+        await db.collection("users").doc(user.uid).set({
+          username: username,
+          email: email,
+          balance: 0, // mặc định số dư 0
+          createdAt: new Date()
+        });
+
+        alert("🎉 Đăng ký thành công!");
+        window.location.href = "login.html";
+      } catch (error) {
+        alert("❌ Lỗi: " + error.message);
+      }
+    });
+
+    // --- Default Admin (chỉ chạy 1 lần) ---
+    async function createDefaultAdmin() {
+      const adminDoc = await db.collection("users").where("username", "==", "admin").get();
+      if (adminDoc.empty) {
+        await db.collection("users").add({
+          username: "admin",
+          email: "admin@example.com",
+          balance: 999999,
+          createdAt: new Date()
+        });
+        console.log("✅ Admin mặc định đã tạo");
+      }
+    }
+    createDefaultAdmin();
+
+    // --- Music ---
+    const music = document.getElementById("bgMusic");
+    const btn = document.getElementById("toggleMusic");
+    let playing = true;
+    window.addEventListener("load", () => {
+      music.play().catch(()=>{ btn.textContent="▶ Bật nhạc"; playing=false; });
+    });
+    btn.addEventListener("click", ()=> {
+      if (!playing) { music.play(); btn.textContent="⏸ Tắt nhạc"; }
+      else { music.pause(); btn.textContent="▶ Bật nhạc"; }
+      playing = !playing;
+    });
+  </script>
+</body>
+</html>

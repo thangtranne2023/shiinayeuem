@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GachaTool - Mua hàng</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  font-family: 'Rubik', sans-serif;
+  background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color:#fff;
+}
+</style>
+</head>
+<body>
+<!-- Header -->
+<header class="bg-[#161616] text-white px-6 py-3 flex justify-between items-center text-sm">
+  <div class="font-semibold">Chào mừng bạn đến GACHATOOL.COM</div>
+  <div id="userStatus" class="space-x-4"></div>
+</header>
+
+<!-- Navbar -->
+<nav class="shadow text-sm px-6 py-3 flex justify-between items-center">
+  <div class="flex space-x-6" id="nav">
+    <a href="#" class="font-medium text-white">Trang chủ</a>
+    <a href="#" class="text-white">Sản phẩm</a>
+    <a href="history.html" class="text-white">Lịch sử</a>
+    <a href="#" class="text-white">CTV</a>
+    <a href="#" class="text-white">Affiliate</a>
+  </div>
+  <input type="text" placeholder="Tìm sản phẩm..." class="border px-3 py-1 rounded text-sm text-black">
+</nav>
+
+<!-- Thông báo -->
+<div class="bg-[#1c1c1c]/70 border mx-4 my-4 p-4 rounded shadow">
+  <p class="text-green-300 text-sm font-bold">Chào mừng quay trở lại! Vui lòng kiểm tra đơn hàng nếu đã thanh toán.</p>
+  <p class="text-xs mt-2 text-gray-200">Tham gia Zalo / Telegram để được hỗ trợ nhanh chóng.</p>
+</div>
+
+<!-- Khu vực sản phẩm -->
+<section class="px-6 pb-10">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="productList"></div>
+</section>
+
+<!-- Modal -->
+<div id="buyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white text-black p-6 rounded-xl w-full max-w-sm space-y-4">
+    <h2 class="text-xl font-semibold">Xác nhận mua</h2>
+    <input type="number" id="buyQuantity" class="w-full p-2 border rounded" placeholder="Số lượng" />
+    <input type="text" id="discountCode" class="w-full p-2 border rounded" placeholder="Mã giảm giá (nếu có)" />
+    <button id="confirmBtn" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Xác nhận mua</button>
+    <button onclick="document.getElementById('buyModal').classList.add('hidden')" class="text-sm underline">Hủy</button>
+  </div>
+</div>
+
+<button id="toggleMusic">⏸ Tắt nhạc</button>
+<audio id="bgMusic" autoplay loop>
+  <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+</audio>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+  authDomain: "shiinamahiru.firebaseapp.com",
+  projectId: "shiinamahiru",
+  storageBucket: "shiinamahiru.firebasestorage.app",
+  messagingSenderId: "639368679466",
+  appId: "1:639368679466:web:c2886952ea91599ec9b353"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// music
+const music = document.getElementById("bgMusic");
+const btn = document.getElementById("toggleMusic");
+let playing = true;
+window.addEventListener("load", ()=>{ music.play().catch(()=>{ btn.textContent="▶ Bật nhạc"; playing=false; }); });
+btn.addEventListener("click", ()=>{ if(!playing){ music.play(); btn.textContent="⏸ Tắt nhạc"; } else { music.pause(); btn.textContent="▶ Bật nhạc"; } playing=!playing; });
+
+// USER LOGIN
+let currentUser = null;
+onAuthStateChanged(auth, (user)=>{
+  if(!user) window.location.href="login.html";
+  currentUser = user;
+  document.getElementById("userStatus").innerHTML = `👤 ${user.email} | <a href="#" onclick="logout()" class="underline">Logout</a>`;
+});
+
+function logout(){ auth.signOut().then(()=>window.location.href="login.html"); }
+
+// LOAD PRODUCTS
+const container = document.getElementById("productList");
+async function loadProducts(){
+  container.innerHTML = '';
+  const snap = await getDocs(collection(db, "products"));
+  snap.forEach(docSnap=>{
+    const p = docSnap.data();
+    const id = docSnap.id;
+    const box = document.createElement("div");
+    box.className="bg-white rounded-lg shadow p-4 text-sm";
+    box.style.background="rgba(255,255,255,0.06)";
+    box.innerHTML=`
+      <div class="font-semibold text-white">${p.name}</div>
+      <ul class="my-2 space-y-1 text-green-300">
+        <li>✔ Auto update</li>
+        <li>✔ Safe mode</li>
+        <li>✔ Hỗ trợ nhiều client</li>
+      </ul>
+      <div class="flex items-center justify-between my-2">
+        <span class="text-xs text-gray-200">Giá</span>
+        <span class="text-orange-300 font-semibold">${p.price.toLocaleString()}đ</span>
+      </div>
+      <button onclick="openBuyModal('${id}')" class="w-full bg-[#5d7c61] text-white py-2 rounded mt-2 hover:bg-[#4a6650]">🛕2 MUA NGAY</button>
+    `;
+    container.appendChild(box);
+  });
+}
+loadProducts();
+
+let selectedProductId = null;
+async function openBuyModal(id){
+  selectedProductId = id;
+  document.getElementById("buyModal").classList.remove("hidden");
+  document.getElementById("confirmBtn").onclick = confirmPurchase;
+}
+
+// CONFIRM PURCHASE
+async function confirmPurchase(){
+  const qty = parseInt(document.getElementById("buyQuantity").value || "1");
+  const discount = document.getElementById("discountCode").value.trim();
+  if(!selectedProductId) return alert("Chưa chọn sản phẩm");
+  
+  const pRef = doc(db,"products",selectedProductId);
+  const pSnap = await getDocs(query(collection(db,"products"), where("__name__","==",selectedProductId)));
+  if(pSnap.empty) return alert("Sản phẩm không tồn tại");
+
+  const pData = pSnap.docs[0].data();
+  let total = pData.price * qty;
+  if(discount==="GACHA10") total*=0.9;
+
+  if(pData.quantity<qty) return alert("❌ Không đủ key");
+
+  // lấy key từ subcollection
+  const keysSnap = await getDocs(query(collection(db,"products",selectedProductId,"keys"), where("used","==",false), limit(qty)));
+  if(keysSnap.size<qty) return alert("❌ Không đủ key chưa dùng");
+  const keys = [];
+  for(const k of keysSnap.docs){
+    keys.push(k.data().value);
+    await updateDoc(doc(db,"products",selectedProductId,"keys",k.id),{used:true});
+  }
+
+  await addDoc(collection(db,"history"),{
+    username: currentUser.email,
+    product: pData.name,
+    quantity: qty,
+    total,
+    time: new Date().toISOString(),
+    keys
+  });
+
+  await updateDoc(pRef,{quantity: pData.quantity - qty});
+  alert("✅ Mua thành công!");
+  location.reload();
+}
+</script>
+</body>
+</html>

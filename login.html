@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng Nhập</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }</style>
+</head>
+<body class="flex items-center justify-center h-screen">
+  <div class="bg-[#1c1c1c]/80 backdrop-blur-xl p-8 rounded-xl border border-zinc-700 w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center text-purple-400">Đăng Nhập</h1>
+    <form id="loginForm">
+      <input type="text" id="identifier" placeholder="Tên đăng nhập hoặc Email" class="w-full mb-4 p-2 rounded bg-zinc-800 text-white" required />
+      <input type="password" id="password" placeholder="Mật khẩu" class="w-full mb-4 p-2 rounded bg-zinc-800 text-white" required />
+      <button type="submit" class="w-full bg-purple-600 py-2 rounded hover:bg-purple-700">Đăng Nhập</button>
+    </form>
+    <p class="mt-4 text-center text-sm text-gray-300">
+      Chưa có tài khoản? <a href="register.html" class="text-purple-400 hover:underline">Đăng ký</a>
+    </p>
+  </div>
+
+  <button id="toggleMusic">⏸ Tắt nhạc</button>
+  <audio id="bgMusic" autoplay loop>
+    <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+  </audio>
+
+  <!-- Firebase modular -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+      authDomain: "shiinamahiru.firebaseapp.com",
+      projectId: "shiinamahiru",
+      storageBucket: "shiinamahiru.firebasestorage.app",
+      messagingSenderId: "639368679466",
+      appId: "1:639368679466:web:c2886952ea91599ec9b353"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // music controls (same as before)
+    const music = document.getElementById("bgMusic");
+    const btn = document.getElementById("toggleMusic");
+    let playing = true;
+    window.addEventListener("load", () => { music.play().catch(()=>{ btn.textContent="▶ Bật nhạc"; playing=false; }); });
+    btn.addEventListener("click", ()=>{ if(!playing){ music.play(); btn.textContent="⏸ Tắt nhạc"; } else { music.pause(); btn.textContent="▶ Bật nhạc"; } playing=!playing; });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const identifier = document.getElementById('identifier').value.trim();
+      const password = document.getElementById('password').value;
+
+      // identifier có thể là username hoặc email
+      let emailToUse = identifier;
+      // nếu identifier không chứa @ thì có thể là username -> tìm trong users collection
+      if (!identifier.includes('@')) {
+        const q = query(collection(db, "users"), where("username", "==", identifier));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          alert("Tài khoản không tồn tại. Vui lòng đăng ký.");
+          return;
+        }
+        // lấy email đầu tiên tìm được
+        emailToUse = snap.docs[0].data().email;
+        if (!emailToUse) {
+          alert("Tài khoản chưa có email hợp lệ. Liên hệ admin.");
+          return;
+        }
+      }
+
+      try {
+        await signInWithEmailAndPassword(auth, emailToUse, password);
+        // đăng nhập thành công -> chuyển tới index
+        window.location.href = "index.html";
+      } catch (err) {
+        console.error(err);
+        alert("Đăng nhập thất bại: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

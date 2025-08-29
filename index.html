@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GachaTool Clone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Rubik', sans-serif;
+      background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed;
+      background-size: cover; color: #fff;
+    }
+    header, nav, footer, .card, .bg-white {
+      background: rgba(0,0,0,0.6) !important;
+      color: #fff !important;
+    }
+    #toggleMusic {
+      position: fixed; bottom: 20px; right: 20px;
+      background: rgba(61,92,66,0.9); color: white; padding: 10px 15px;
+      border-radius: 9999px; font-size: 14px; z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="text-white">
+    <div class="flex justify-between items-center px-6 py-3 text-sm">
+      <div class="font-semibold">Chào mừng bạn đến GACHATOOL.COM</div>
+      <div id="userStatus" class="space-x-4"></div>
+    </div>
+  </header>
+
+  <!-- Navbar -->
+  <nav class="shadow text-sm">
+    <div class="flex justify-between items-center px-6 py-3">
+      <div class="flex space-x-6" id="nav">
+        <a href="#" class="font-medium text-white">Trang chủ</a>
+        <a href="#" class="text-white">Sản phẩm</a>
+        <a href="history.html" class="text-white">Lịch sử</a>
+      </div>
+      <input type="text" placeholder="Tìm sản phẩm..." class="border px-3 py-1 rounded text-sm text-black">
+    </div>
+  </nav>
+
+  <!-- Thông báo -->
+  <div class="card border mx-4 my-4 p-4 rounded shadow">
+    <p class="text-green-300 text-sm font-bold">Chào mừng quay trở lại webbee, nhớ kiểm tra đơn!</p>
+  </div>
+
+  <!-- Product Section -->
+  <section class="px-6 pb-10">
+    <div id="productSection" class="space-y-4"></div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-sm text-center py-4">
+    © 2025 GachaTool Clone – Developed by Shiina
+  </footer>
+
+  <!-- Modal -->
+  <div id="buyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white text-black p-6 rounded-xl w-full max-w-sm space-y-4">
+      <h2 class="text-xl font-semibold">Xác nhận mua</h2>
+      <label for="buyQuantity" class="block text-sm mb-1">Số lượng</label>
+      <input type="number" id="buyQuantity" class="w-full p-2 border rounded text-black" placeholder="Nhập số lượng..." />
+      <input type="text" id="discountCode" class="w-full p-2 border rounded" placeholder="Mã giảm giá (nếu có)" />
+      <button id="confirmBtn" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Xác nhận mua</button>
+      <button onclick="document.getElementById('buyModal').classList.add('hidden')" class="text-sm underline">Hủy</button>
+    </div>
+  </div>
+
+  <!-- Music -->
+  <button id="toggleMusic">⏸ Tắt nhạc</button>
+  <audio id="bgMusic" autoplay loop>
+    <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+  </audio>
+
+  <!-- Firebase -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+
+    // 🔥 Config Firebase của cậu
+    const firebaseConfig = {
+      apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+      authDomain: "shiinamahiru.firebaseapp.com",
+      projectId: "shiinamahiru",
+      storageBucket: "shiinamahiru.appspot.com",
+      messagingSenderId: "639368679466",
+      appId: "1:639368679466:web:c2886952ea91599ec9b353"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const userStatus = document.getElementById("userStatus");
+    const productSection = document.getElementById("productSection");
+    let currentUser = null;
+
+    // Hiển thị user
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        userStatus.innerHTML = `👤 ${user.email} | <a href="#" id="logoutLink" class="underline">Logout</a>`;
+        document.getElementById("logoutLink").addEventListener("click", async () => {
+          await signOut(auth);
+          window.location.href = "login.html";
+        });
+        renderProducts();
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    // Load sản phẩm
+    async function renderProducts() {
+      const snap = await getDocs(collection(db, "products"));
+      productSection.innerHTML = `
+        <div class="bg-[#5d7c61] text-white font-semibold px-4 py-2 rounded mb-4 inline-block">
+          SẢN PHẨM HIỆN CÓ
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="productGrid"></div>
+      `;
+      const grid = document.getElementById("productGrid");
+
+      snap.forEach(docSnap => {
+        const p = docSnap.data();
+        const realPrice = p.discount && p.discount > 0 ? p.discount : p.price;
+        grid.innerHTML += `
+          <div class="bg-white rounded-lg shadow p-4 text-sm" style="background: rgba(255,255,255,0.06);">
+            <div class="font-semibold text-white">${p.name}</div>
+            <ul class="my-2 space-y-1 text-green-300">
+              <li>✔ ${p.desc || "Không có mô tả."}</li>
+              <li>✔ Số lượng còn: <span class="text-white font-semibold">${p.quantity}</span></li>
+            </ul>
+            <div class="flex items-center justify-between my-2">
+              <span class="text-xs text-gray-200">Giá bán</span>
+              <span class="text-orange-300 font-semibold">${realPrice.toLocaleString()}đ</span>
+            </div>
+            <button class="w-full bg-[#5d7c61] text-white py-2 rounded mt-2 hover:bg-[#4a6650]"
+              onclick="openBuyModal('${docSnap.id}', '${p.name}', ${realPrice}, ${p.quantity})">
+              🛒 MUA NGAY
+            </button>
+          </div>
+        `;
+      });
+    }
+
+    // Mua hàng
+    window.openBuyModal = (productId, productName, price, quantity) => {
+      document.getElementById("buyModal").classList.remove("hidden");
+      document.getElementById("confirmBtn").onclick = () => confirmPurchase(productId, productName, price, quantity);
+    };
+
+    async function confirmPurchase(productId, productName, price, available) {
+      const quantity = parseInt(document.getElementById("buyQuantity").value || "1");
+      if (quantity > available) return alert("❌ Không đủ hàng");
+
+      let total = price * quantity;
+      const discount = document.getElementById("discountCode").value.trim();
+      if (discount === "GACHA10") total = Math.round(total * 0.9);
+
+      // ✅ Giả định mỗi user có balance trong Firestore (collection "users")
+      const userRef = doc(db, "users", currentUser.uid);
+      const productRef = doc(db, "products", productId);
+
+      // Update (đơn giản hóa)
+      await updateDoc(productRef, { quantity: available - quantity });
+      await addDoc(collection(db, "history"), {
+        user: currentUser.email,
+        product: productName,
+        quantity,
+        total,
+        time: new Date().toISOString()
+      });
+
+      alert("✅ Mua thành công!");
+      document.getElementById("buyModal").classList.add("hidden");
+      renderProducts();
+    }
+  </script>
+
+  <!-- Music -->
+  <script>
+    const music = document.getElementById("bgMusic");
+    const btn = document.getElementById("toggleMusic");
+    let playing = true;
+    window.addEventListener("load", () => {
+      music.play().catch(() => { btn.textContent="▶ Bật nhạc"; playing=false; });
+    });
+    btn.addEventListener("click", () => {
+      if (!playing) { music.play(); btn.textContent="⏸ Tắt nhạc"; }
+      else { music.pause(); btn.textContent="▶ Bật nhạc"; }
+      playing = !playing;
+    });
+  </script>
+</body>
+</html>

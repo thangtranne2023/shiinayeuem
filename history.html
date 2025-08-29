@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lịch sử mua hàng</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }
+</style>
+</head>
+<body class="min-h-screen">
+<header class="bg-[#161616] text-white px-6 py-3 text-sm flex justify-between items-center">
+  <div class="font-semibold">Lịch sử mua hàng</div>
+  <a href="index.html" class="underline">← Trang chủ</a>
+</header>
+
+<main class="p-6">
+  <div id="historyContainer" class="space-y-4"></div>
+</main>
+
+<button id="toggleMusic">⏸ Tắt nhạc</button>
+<audio id="bgMusic" autoplay loop>
+  <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+</audio>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyANCoHCTlrQlrt-9XrYt4kMLJ0JmcdW3is",
+  authDomain: "shiinamahiru.firebaseapp.com",
+  projectId: "shiinamahiru",
+  storageBucket: "shiinamahiru.firebasestorage.app",
+  messagingSenderId: "639368679466",
+  appId: "1:639368679466:web:c2886952ea91599ec9b353"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// music
+const music = document.getElementById("bgMusic");
+const btn = document.getElementById("toggleMusic");
+let playing = true;
+window.addEventListener("load", ()=>{ music.play().catch(()=>{ btn.textContent="▶ Bật nhạc"; playing=false; }); });
+btn.addEventListener("click", ()=>{ if(!playing){ music.play(); btn.textContent="⏸ Tắt nhạc"; } else { music.pause(); btn.textContent="▶ Bật nhạc"; } playing=!playing; });
+
+const container = document.getElementById("historyContainer");
+
+onAuthStateChanged(auth, (user)=>{
+  if(!user) window.location.href="login.html";
+  
+  const q = query(collection(db,"history"), where("username","==",user.email), orderBy("time","desc"));
+  onSnapshot(q, snap=>{
+    container.innerHTML='';
+    if(snap.empty){
+      container.innerHTML=`<p class="text-gray-200 text-sm">Không có đơn hàng nào.</p>`;
+      return;
+    }
+    snap.forEach(docSnap=>{
+      const d = docSnap.data();
+      const keysPart = d.keys ? d.keys.map(k=>`<li class="text-green-300 font-mono text-sm">${k}</li>`).join('') : `<button class="text-blue-300 underline text-sm" disabled>Chưa có key</button>`;
+      container.innerHTML+=`
+        <div class="bg-[#1c1c1c]/70 rounded-xl p-4">
+          <div class="text-sm mb-2">
+            <span class="font-semibold text-white">${d.product}</span> • 
+            <span>${d.quantity} key</span> • 
+            <span>${Number(d.total).toLocaleString()} đ</span> • 
+            <span class="text-gray-300">${new Date(d.time).toLocaleString()}</span>
+          </div>
+          <ul class="space-y-1">${keysPart}</ul>
+        </div>
+      `;
+    });
+  });
+});
+</script>
+</body>
+</html>
