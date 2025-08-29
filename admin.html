@@ -3,21 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Admin Panel</title>
+<title>Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/XvNGRmbb/wallpapersden-com-ellen-joe-zenless-zone-zero-1920x1259.jpg') no-repeat center center fixed; background-size: cover; color:#fff; }
 </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen p-6">
 
-<header class="bg-[#161616] shadow-md p-4 flex justify-between items-center">
-  <h1 class="text-xl font-bold text-purple-400">ADMIN PANEL</h1>
-  <a href="index.html" class="text-sm text-gray-300 hover:text-white">← Về trang chủ</a>
+<header class="flex justify-between items-center mb-6">
+  <h1 class="text-3xl font-bold text-purple-400">🖥 Dashboard</h1>
+  <button id="toggleMusic" class="bg-purple-600 px-3 py-1 rounded hover:bg-purple-700">⏸ Tắt nhạc</button>
 </header>
 
-<main class="p-6 space-y-10">
+<audio id="bgMusic" autoplay loop>
+  <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
+</audio>
 
+<!-- Admin Panel -->
+<div id="adminPanel" class="space-y-10" style="display:none;">
   <!-- Thêm sản phẩm -->
   <section>
     <h2 class="text-2xl font-semibold mb-4">🛒 Thêm sản phẩm</h2>
@@ -41,7 +45,6 @@ body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/X
   </section>
 
   <!-- Thêm tiền -->
-  <hr class="border-zinc-700 my-6" />
   <section>
     <h2 class="text-2xl font-semibold mb-4">💰 Thêm tiền cho user</h2>
     <div class="bg-[#1c1c1c] p-4 rounded-xl border border-zinc-700 max-w-lg space-y-3">
@@ -52,7 +55,6 @@ body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/X
   </section>
 
   <!-- Quản lý tài khoản -->
-  <hr class="border-zinc-700 my-6" />
   <section>
     <h2 class="text-2xl font-semibold mb-4">👥 Quản lý tài khoản</h2>
     <div class="bg-[#1c1c1c] p-4 rounded-xl border border-zinc-700 max-w-4xl overflow-auto">
@@ -71,13 +73,17 @@ body { font-family: 'Rubik', sans-serif; background: url('https://i.postimg.cc/X
       </table>
     </div>
   </section>
+</div>
 
-</main>
-
-<button id="toggleMusic" class="fixed bottom-5 right-5 bg-purple-600 px-4 py-2 rounded">⏸ Tắt nhạc</button>
-<audio id="bgMusic" autoplay loop>
-  <source src="https://github.com/thangtranne2023/w-azure/raw/refs/heads/main/DONALD%20GOLD%20-%20ADAMN%20%20%5BOFFICIAL%20MV%5D.mp3?raw=true" type="audio/mpeg">
-</audio>
+<!-- User Panel -->
+<div id="userPanel" style="display:none;">
+  <h2 class="text-2xl font-semibold mb-4">👤 Thông tin tài khoản</h2>
+  <div class="bg-[#1c1c1c] p-4 rounded-xl max-w-md space-y-3">
+    <div>Username: <span id="userName"></span></div>
+    <div>Email: <span id="userEmail"></span></div>
+    <div>Số dư: <span id="userBalance"></span></div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
@@ -92,7 +98,6 @@ const firebaseConfig = {
   messagingSenderId: "639368679466",
   appId: "1:639368679466:web:c2886952ea91599ec9b353"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -100,85 +105,85 @@ const db = getFirestore(app);
 const music = document.getElementById("bgMusic");
 const musicBtn = document.getElementById("toggleMusic");
 let playing = true;
-window.addEventListener("load", ()=>{ music.play().catch(()=>{ musicBtn.textContent="▶ Bật nhạc"; playing=false; }); });
-musicBtn.addEventListener("click", ()=>{ if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } playing=!playing; });
-
-// Admin guard
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { alert("Vui lòng đăng nhập admin"); window.location.href = "login.html"; return; }
-  try {
-    const docSnap = await getDocs(query(collection(db, "users"), where("__name__", "==", user.uid)));
-    let isAdmin = false;
-    if (!docSnap.empty) { const d=docSnap.docs[0].data(); if(d.role==="admin") isAdmin=true; }
-    if(!isAdmin) { alert("Bạn không có quyền truy cập!"); window.location.href="index.html"; return; }
-    loadProducts(); loadUsers();
-  } catch(err){ console.error(err); alert("Lỗi quyền: "+err.message); window.location.href="index.html"; }
+musicBtn.addEventListener("click", ()=>{ 
+  if(!playing){ music.play(); musicBtn.textContent="⏸ Tắt nhạc"; } 
+  else { music.pause(); musicBtn.textContent="▶ Bật nhạc"; } 
+  playing=!playing; 
 });
 
-// ADD PRODUCT
-document.getElementById("btnAddProduct").addEventListener("click", async ()=>{
-  const name = document.getElementById("productName").value.trim();
-  const desc = document.getElementById("productDesc").value.trim();
-  const price = Number(document.getElementById("productPrice").value)||0;
-  const discount = Number(document.getElementById("productDiscount").value)||0;
-  const image = document.getElementById("productImage").value.trim();
-  const quantity = parseInt(document.getElementById("productQuantity").value)||0;
-  if(!name||!quantity)return alert("Vui lòng điền đủ trường.");
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ alert("Vui lòng đăng nhập"); window.location.href="login.html"; return; }
 
-  try {
-    const pRef = await addDoc(collection(db,"products"),{name,desc,price,discount,image,quantity,createdAt:new Date().toISOString()});
-    for(let i=0;i<quantity;i++){
-      const key=`KEY-${Math.random().toString(36).slice(2,9)}-${Date.now().toString().slice(-4)}-${i}`;
-      await addDoc(collection(db,"products",pRef.id,"keys"),{value:key,used:false,createdAt:new Date().toISOString()});
-    }
-    alert("✅ Đã thêm sản phẩm và tạo keys.");
-    ["productName","productDesc","productPrice","productDiscount","productImage","productQuantity"].forEach(id=>document.getElementById(id).value="");
+  const uSnap = await getDocs(query(collection(db, "users"), where("__name__", "==", user.uid)));
+  if(uSnap.empty){ alert("User chưa tồn tại"); return; }
+  const uData = uSnap.docs[0].data();
+  const role = uData.role || "user";
+
+  if(role==="admin"){ 
+    document.getElementById("adminPanel").style.display="block";
     loadProducts();
-  }catch(err){ console.error(err); alert("Lỗi thêm sản phẩm: "+err.message);}
+    loadUsers();
+  } else {
+    document.getElementById("userPanel").style.display="block";
+    document.getElementById("userName").textContent = uData.username;
+    document.getElementById("userEmail").textContent = uData.email;
+    document.getElementById("userBalance").textContent = uData.balance || 0;
+  }
 });
 
-// LOAD PRODUCTS
+// ---------- Admin functions ----------
 async function loadProducts(){
   const snap = await getDocs(collection(db,"products"));
-  const list = document.getElementById("productList"); list.innerHTML="";
-  snap.forEach(docSnap=>{
-    const p=docSnap.data(); const id=docSnap.id;
+  const list = document.getElementById("productList");
+  list.innerHTML="";
+  snap.forEach(d=>{
+    const p=d.data();
     list.innerHTML+=`<div class="bg-zinc-800 p-4 rounded mb-3 flex justify-between items-center">
       <div><div class="font-semibold">${p.name}</div>
       <div class="text-sm text-gray-400">Giá: ${p.price} | KM: ${p.discount||0} | SL: ${p.quantity}</div></div>
-      <div><button onclick="deleteProduct('${id}')" class="text-red-500 hover:underline text-sm mr-4">Xóa</button></div>
+      <div><button onclick="deleteProduct('${d.id}')" class="text-red-500 hover:underline text-sm">Xóa</button></div>
     </div>`;
   });
 }
+window.deleteProduct=async function(id){ if(confirm("Xóa sản phẩm?")){ await deleteDoc(doc(db,"products",id)); loadProducts(); } }
 
-window.deleteProduct=async function(productId){
-  if(!confirm("Bạn chắc chắn muốn xóa sản phẩm này?")) return;
-  try{ await deleteDoc(doc(db,"products",productId)); alert("Đã xóa."); loadProducts(); }
-  catch(err){ console.error(err); alert("Lỗi xóa: "+err.message);}
-}
-
-// ADD BALANCE
-document.getElementById("btnAddBalance").addEventListener("click", async ()=>{
-  const username=document.getElementById("targetUser").value.trim();
-  const amount=Number(document.getElementById("amount").value)||0;
-  if(!username||amount<=0)return alert("Nhập username và amount hợp lệ.");
-  try{
-    const snap = await getDocs(query(collection(db,"users"),where("username","==",username)));
-    if(snap.empty)return alert("User không tồn tại.");
-    const uDoc=snap.docs[0]; const uid=uDoc.id;
-    const cur=uDoc.data().balance||0;
-    await updateDoc(doc(db,"users",uid),{balance:cur+amount});
-    alert("✅ Đã cộng tiền."); loadUsers();
-  }catch(err){ console.error(err); alert("Lỗi cộng tiền: "+err.message);}
+document.getElementById("btnAddProduct")?.addEventListener("click", async()=>{
+  const name=document.getElementById("productName").value.trim();
+  const desc=document.getElementById("productDesc").value.trim();
+  const price=Number(document.getElementById("productPrice").value)||0;
+  const discount=Number(document.getElementById("productDiscount").value)||0;
+  const image=document.getElementById("productImage").value.trim();
+  const quantity=parseInt(document.getElementById("productQuantity").value)||0;
+  if(!name||!quantity) return alert("Vui lòng điền tên + SL key");
+  const pRef=await addDoc(collection(db,"products"),{name,desc,price,discount,image,quantity,createdAt:new Date().toISOString()});
+  for(let i=0;i<quantity;i++){
+    const key=`KEY-${Math.random().toString(36).slice(2,9)}-${Date.now().toString().slice(-4)}-${i}`;
+    await addDoc(collection(db,"products",pRef.id,"keys"),{value:key,used:false,createdAt:new Date().toISOString()});
+  }
+  alert("✅ Đã thêm sản phẩm & tạo key"); loadProducts();
 });
 
-// LOAD USERS
+document.getElementById("btnAddBalance")?.addEventListener("click", async()=>{
+  const username=document.getElementById("targetUser").value.trim();
+  const amount=Number(document.getElementById("amount").value)||0;
+  if(!username||amount<=0) return alert("Nhập username + số tiền hợp lệ");
+  const snap=await getDocs(query(collection(db,"users"),where("username","==",username)));
+  if(snap.empty) return alert("User không tồn tại");
+  const uid=snap.docs[0].id;
+  const cur=snap.docs[0].data().balance||0;
+  await updateDoc(doc(db,"users",uid),{balance:cur+amount});
+  alert("✅ Đã cộng tiền");
+  loadUsers();
+});
+
 async function loadUsers(){
-  const snap = await getDocs(collection(db,"users"));
-  const tb=document.getElementById("accountList"); tb.innerHTML="";
+  const snap=await getDocs(collection(db,"users"));
+  const tb=document.getElementById("accountList");
+  tb.innerHTML="";
   let idx=0;
-  snap.forEach(docSnap=>{
-    const u=docSnap.data(); const uid=docSnap.id;
+  snap.forEach(d=>{
+    const u=d.data();
+    const uid=d.id;
     const status=u.locked?"🔒 Khoá":"✅ Bình thường";
     tb.innerHTML+=`<tr class="border-b border-zinc-700">
       <td class="p-2">${++idx}</td>
@@ -194,22 +199,26 @@ async function loadUsers(){
   });
 }
 
-window.toggleLock=async function(uid){
-  try{
-    const uRef=doc(db,"users",uid); const uSnap=await getDocs(query(collection(db,"users"),where("__name__","==",uid)));
-    const usersAll=await getDocs(collection(db,"users")); let found=null; usersAll.forEach(d=>{if(d.id===uid)found=d;});
-    if(!found)return alert("User not found");
-    const currentLocked=found.data().locked||false;
-    await updateDoc(doc(db,"users",uid),{locked:!currentLocked});
-    alert(`Đã ${!currentLocked?'khoá':'mở khoá'} user.`); loadUsers();
-  }catch(err){ console.error(err); alert("Lỗi toggle lock: "+err.message);}
-}
+window.toggleLock=async(uid)=>{
+  const uRef=doc(db,"users",uid);
+  const snap=await getDocs(query(collection(db,"users"),where("__name__","==",uid)));
+  if(snap.empty) return alert("User not found");
+  const curSnap=await getDocs(collection(db,"users"));
+  let found=null;
+  curSnap.forEach(d=>{if(d.id===uid) found=d;});
+  if(!found) return alert("User not found");
+  const currentLocked=found.data().locked||false;
+  await updateDoc(uRef,{locked:!currentLocked});
+  alert(`Đã ${!currentLocked?'khoá':'mở khoá'} user`);
+  loadUsers();
+};
 
-window.resetPassword=async function(email){
-  if(!email)return alert("User chưa có email."); if(!confirm("Gửi email đặt lại mật khẩu tới: "+email+" ?")) return;
-  try{ await sendPasswordResetEmail(auth,email); alert("✅ Email reset đã gửi."); }
-  catch(err){ console.error(err); alert("Lỗi gửi email reset: "+err.message);}
-}
+window.resetPassword=async(email)=>{
+  if(!email) return alert("User chưa có email");
+  if(!confirm("Gửi email reset tới: "+email+" ?")) return;
+  await sendPasswordResetEmail(auth,email);
+  alert("✅ Email reset đã gửi");
+};
 </script>
 
 </body>
